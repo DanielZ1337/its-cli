@@ -1,0 +1,16 @@
+{
+  "name": "its-cli",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "itslearning-sdk": "^1.0.4",
+    "puppeteer": "^23.11.1"
+  }
+}
