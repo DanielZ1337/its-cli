@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "bun build:win && bun build:mac && bun build:linux",
-    "build:win": "bun build --compile --target=bun-windows-x64 src/index.ts --outfile dist/its-cli-windows.exe",
-    "build:mac": "bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile dist/its-cli-macos",
-    "build:linux": "bun build --compile --target=bun-linux-x64 src/index.ts --outfile dist/its-cli-linux"
+    "build:win": "bun build --compile --minify --target=bun-windows-x64 src/index.ts --outfile dist/its-cli-windows.exe --format esm",
+    "build:mac": "bun build --compile --minify --target=bun-darwin-arm64 src/index.ts --outfile dist/its-cli-macos --format esm",
+    "build:linux": "bun build --compile --minify --target=bun-linux-x64 src/index.ts --outfile dist/its-cli-linux --format esm"
   },
   "devDependencies": {
     "@types/bun": "latest"
