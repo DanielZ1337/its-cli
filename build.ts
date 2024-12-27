@@ -8,11 +8,11 @@ const targets = [
 
 async function build() {
   for (const target of targets) {
-    const command = `nexe dist/cli/index.js --targets ${target.platform} --build --output ${target.output}`;
+    const command = `nexe dist/index.js --targets ${target.platform} --build --output ${target.output}`;
     console.log(`Building for ${target.platform}...`);
 
     try {
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         const childProcess = exec(command, (error, stdout, stderr) => {
           if (error) {
             console.error(`Error building for ${target.platform}:`, error);
@@ -21,7 +21,6 @@ async function build() {
             console.log(
               `Successfully built for ${target.platform}:\n${stdout}`,
             );
-            // @ts-ignore
             resolve();
           }
         });
@@ -37,9 +36,11 @@ async function build() {
           });
         }
       });
-      // @ts-expect-error
-    } catch (error: Error) {
-      console.error(`Failed to build for ${target.platform}:`, error.message);
+    } catch (error) {
+      console.error(
+        `Failed to build for ${target.platform}:`,
+        (error as Error).message,
+      );
       process.exit(1);
     }
   }

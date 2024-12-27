@@ -1,22 +1,23 @@
 {
   "name": "its-cli",
   "version": "1.0.0",
-  "module": "src/index.ts",
-  "description": "CLI tool for ItsLearning",
-  "type": "module",
+  "module": "dist/index.js",
+  "description": "CLI tool for itslearning",
   "main": "dist/index.js",
+  "type": "module",
   "bin": {
     "its-cli": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup",
-    "package": "npm run build.ts"
+    "package": "tsx build.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^22.10.2",
     "nexe": "^3.3.3",
-    "tsup": "^8.3.5"
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2"
   },
   "peerDependencies": {
     "typescript": "^5.7.2"

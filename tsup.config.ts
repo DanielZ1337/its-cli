@@ -9,5 +9,5 @@ export default defineConfig({
   clean: true,
   dts: false,
   external: ["puppeteer"],
-  outDir: "dist/cli",
+  outDir: "dist",
 });
