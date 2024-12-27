@@ -1,42 +1,76 @@
 import puppeteer from "puppeteer";
 import { ItsLearningSDK } from "itslearning-sdk";
-import { ItslearningRestApiEntitiesPersonContextRole } from "itslearning-sdk/types";
 import path from "path";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
 import fs from "fs/promises";
+import keytar from "keytar";
+import inquirer from "inquirer";
 
-// Choose the key format you are using
-const ENCRYPTION_KEY_HEX = process.env.ENCRYPTION_KEY_HEX;
-const ENCRYPTION_KEY_BASE64 = process.env.ENCRYPTION_KEY_BASE64;
+const SERVICE_NAME = "its-cli";
+const ACCOUNT_NAME = "user";
 
-let ENCRYPTION_KEY: Buffer;
+async function getEncryptionKey(): Promise<Buffer> {
+  let key: string | null | undefined =
+    process.env.ENCRYPTION_KEY_HEX || process.env.ENCRYPTION_KEY_BASE64;
 
-// Validate and set the encryption key
-if (ENCRYPTION_KEY_HEX) {
-  const keyBuffer = Buffer.from(ENCRYPTION_KEY_HEX, "hex");
-  if (keyBuffer.length !== 32) {
-    throw new Error(
-      "ENCRYPTION_KEY_HEX must be 32 bytes (64 hex characters) long.",
-    );
+  if (!key) {
+    key = await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
   }
-  ENCRYPTION_KEY = keyBuffer;
-} else if (ENCRYPTION_KEY_BASE64) {
-  const keyBuffer = Buffer.from(ENCRYPTION_KEY_BASE64, "base64");
-  if (keyBuffer.length !== 32) {
-    throw new Error(
-      "ENCRYPTION_KEY_BASE64 must be 32 bytes (44 Base64 characters) long.",
-    );
+
+  if (!key) {
+    const answers = await inquirer.prompt([
+      {
+        type: "password",
+        name: "encryptionKey",
+        message: "Enter your encryption key:",
+        mask: "*",
+      },
+    ]);
+
+    key = answers.encryptionKey;
+
+    // Optionally, save the key securely
+    const saveKey = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "save",
+        message: "Would you like to save this key for future use?",
+        default: false,
+      },
+    ]);
+
+    if (saveKey.save && key) {
+      await keytar.setPassword(SERVICE_NAME, ACCOUNT_NAME, key);
+    }
   }
-  ENCRYPTION_KEY = keyBuffer;
-} else {
-  throw new Error(
-    "ENCRYPTION_KEY_HEX or ENCRYPTION_KEY_BASE64 environment variable must be set.",
-  );
+
+  if (!key) throw new Error("your mom");
+
+  // Validate and convert the key
+  let ENCRYPTION_KEY: Buffer;
+
+  if (key.length === 64 && /^[0-9a-fA-F]+$/.test(key)) {
+    ENCRYPTION_KEY = Buffer.from(key, "hex");
+  } else if (key.length === 44 && /^[A-Za-z0-9+/]+={0,2}$/.test(key)) {
+    ENCRYPTION_KEY = Buffer.from(key, "base64");
+  } else {
+    throw new Error("Invalid encryption key format.");
+  }
+
+  if (ENCRYPTION_KEY.length !== 32) {
+    throw new Error("Encryption key must be 32 bytes long.");
+  }
+
+  return ENCRYPTION_KEY;
 }
+
+const ENCRYPTION_KEY = await getEncryptionKey();
+
 const IV_LENGTH = 16;
 
-function encrypt(text: string) {
+// Encrypt text using AES-256-CBC
+function encrypt(text: string): string {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
   let encrypted = cipher.update(text, "utf8", "hex");
@@ -45,10 +79,10 @@ function encrypt(text: string) {
 }
 
 // Decrypt text using AES-256-CBC
-function decrypt(text: string) {
+function decrypt(text: string): string | undefined {
   const parts = text.split(":");
   const shifted = parts.shift();
-  if (!shifted) return;
+  if (!shifted) return undefined;
   const iv = Buffer.from(shifted, "hex");
   const encryptedText = parts.join(":");
   const decipher = crypto.createDecipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
@@ -68,7 +102,7 @@ async function loadTokens(config: typeof itslearning.config) {
   try {
     const encryptedData = await fs.readFile(tokenFilePath, "utf8");
     const decryptedData = decrypt(encryptedData);
-    if (!decryptedData) throw new Error("couldn't decrypt");
+    if (!decryptedData) throw new Error("Couldn't decrypt tokens.");
     const tokens = JSON.parse(decryptedData);
     if (tokens.accessToken) config.setAccessToken(tokens.accessToken);
     if (tokens.refreshToken) config.setRefreshToken(tokens.refreshToken);
@@ -90,6 +124,9 @@ async function saveTokens(config: typeof itslearning.config) {
 
 const itslearning = new ItsLearningSDK();
 
+const preferredOrg = await itslearning.sites.getSiteByShortname("sdu");
+itslearning.config.setBaseURL(preferredOrg.BaseUrl);
+
 // Load existing tokens if available
 await loadTokens(itslearning.config);
 
@@ -101,9 +138,6 @@ try {
 
 await saveTokens(itslearning.config);
 
-const preferredOrg = await itslearning.sites.getSiteByShortname("sdu");
-itslearning.config.setBaseURL(preferredOrg.BaseUrl);
-
 async function loginRetrieveAccessPuppeteer(itslearning: ItsLearningSDK) {
   let hasValidToken = false;
   const options = {
@@ -111,8 +145,24 @@ async function loginRetrieveAccessPuppeteer(itslearning: ItsLearningSDK) {
     height: 600,
   };
 
+  // Determine __dirname in ESM
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
+  // Function to get Chromium path
+  async function getChromiumExecutablePath(): Promise<string> {
+    const chromiumPath = puppeteer.executablePath();
+    if (!chromiumPath) {
+      throw new Error("Could not determine the Chromium executable path.");
+    }
+    return chromiumPath;
+  }
+
+  const chromiumPath = await getChromiumExecutablePath();
+
   const browser = await puppeteer.launch({
     headless: false,
+    executablePath: chromiumPath,
     defaultViewport: {
       height: options.height,
       width: options.width,
