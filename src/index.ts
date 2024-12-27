@@ -6,6 +6,9 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import keytar from "keytar";
 import inquirer from "inquirer";
+import os from "os";
+import { type Browser, BrowserPlatform } from "@puppeteer/browsers";
+import { ensureChromiumInstalled } from "./installBrowser";
 
 const SERVICE_NAME = "its-cli";
 const ACCOUNT_NAME = "user";
@@ -145,20 +148,8 @@ async function loginRetrieveAccessPuppeteer(itslearning: ItsLearningSDK) {
     height: 600,
   };
 
-  // Determine __dirname in ESM
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-
-  // Function to get Chromium path
-  async function getChromiumExecutablePath(): Promise<string> {
-    const chromiumPath = puppeteer.executablePath();
-    if (!chromiumPath) {
-      throw new Error("Could not determine the Chromium executable path.");
-    }
-    return chromiumPath;
-  }
-
-  const chromiumPath = await getChromiumExecutablePath();
+  // Ensure Chromium is installed
+  const chromiumPath = await ensureChromiumInstalled();
 
   const browser = await puppeteer.launch({
     headless: false,

@@ -1,7 +1,7 @@
 {
   "name": "its-cli",
   "version": "1.0.0",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "description": "CLI tool for ItsLearning",
   "type": "module",
   "main": "dist/index.js",
@@ -10,18 +10,19 @@
   },
   "scripts": {
     "build": "tsup",
-    "package": "nexe dist/bundle.js --resources ./node_modules/puppeteer/.local-chromium/**/*,./config.json --targets windows-x64,macos-x64,linux-x64 --output dist/its-cli"
+    "package": "npm run build.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^22.10.2",
-    "nexe": "^4.0.0-rc.6",
+    "nexe": "^3.3.3",
     "tsup": "^8.3.5"
   },
   "peerDependencies": {
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "@puppeteer/browsers": "^2.6.1",
     "commander": "^12.1.0",
     "inquirer": "^12.3.0",
     "itslearning-sdk": "^1.0.4",
